@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A Gift for You</title>
+    <style>
+        :root {
+            --rose: #fff1f2;
+            --petal: #fce7f3;
+            --lavender: #f3e8ff;
+            --deep-rose: #be185d;
+            --glass: rgba(255, 255, 255, 0.6);
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--rose), var(--lavender));
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        .aura {
+            position: absolute;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, var(--petal) 0%, rgba(255,255,255,0) 70%);
+            filter: blur(60px);
+            z-index: -1;
+            animation: float 8s infinite alternate ease-in-out;
+        }
+
+        @keyframes float {
+            from { transform: translate(-15%, -15%); }
+            to { transform: translate(15%, 15%); }
+        }
+
+        .card {
+            background: var(--glass);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(255,255,255,0.7);
+            padding: 2.5rem;
+            border-radius: 30px;
+            box-shadow: 0 20px 40px rgba(190, 24, 93, 0.1);
+            text-align: center;
+            max-width: 380px;
+            width: 90%;
+            transition: all 0.5s ease;
+        }
+
+        h2 { color: var(--deep-rose); font-size: 1.3rem; margin-bottom: 10px; }
+        .hint { color: #86198f; font-size: 0.9rem; margin-bottom: 25px; opacity: 0.8; }
+
+        #grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 10px;
+            margin-bottom: 25px;
+        }
+
+        .cell {
+            aspect-ratio: 1/1;
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+            font-weight: 700;
+            color: var(--deep-rose);
+            cursor: pointer;
+            transition: 0.3s;
+            user-select: none;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+        }
+
+        .cell.selected {
+            background: var(--deep-rose);
+            color: white;
+            transform: scale(1.1);
+            box-shadow: 0 5px 15px rgba(190, 24, 93, 0.3);
+        }
+
+        .poetic-text {
+            color: #4a044e;
+            font-size: 1.15rem;
+            line-height: 1.8;
+            font-style: italic;
+            margin-bottom: 20px;
+        }
+
+        .restart-btn {
+            background: var(--deep-rose);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="aura"></div>
+
+<div class="card" id="main-card">
+    <div id="game-view">
+        <h2>Find the word: <span id="target-word" style="border-bottom: 2px solid;"></span></h2>
+        <p class="hint">Unlock a message hidden just for you.</p>
+        <div id="grid"></div>
+    </div>
+
+    <div id="reward-view" style="display:none;">
+        <div class="poetic-text" id="final-msg"></div>
+        <button class="restart-btn" onclick="resetGame()">Play Again</button>
+    </div>
+</div>
+
+<script>
+    const wordList = ["DREAM", "LIGHT", "BLOOM", "STARRY", "FAIRY", "GLOW", "MAGIC", "PEACE"];
+    const compliments = [
+        "In a world of fleeting signals, you are my most beautiful constant.",
+        "யாரும் அறியாத ஒரு ரகசியம் சொல்லவா? என் உலகத்தின் வெளிச்சமே நீதான்.",
+        "Like a star in a quiet sky, you shine without needing an audience.",
+        "உன் புன்னகை ஆயிரம் கவிதைகளுக்குச் சமம்; அதுவே என் நாளின் சிறந்த தொடக்கம்.",
+        "If grace were a person, it would move and speak exactly like you do.",
+        "விண்ணில் இருக்கும் நிலவை விட, உன் அருகாமையில் இருக்கும் அமைதியே எனக்குப் பிடிக்கும்.",
+        "You carry a kind of light that doesn't need a sun to shine.",
+        "உன்னைப் போன்ற ஒரு தோழி கிடைப்பது, இந்த பிரபஞ்சம் எனக்கு அளித்த விலைமதிப்பற்ற பரிசு."
+    ];
+
+    let currentSelectedIndices = [];
+
+    function initGame() {
+        // Reset UI
+        document.getElementById('game-view').style.display = 'block';
+        document.getElementById('reward-view').style.display = 'none';
+        document.getElementById('grid').innerHTML = '';
+        currentSelectedIndices = [];
+
+        // Setup Word
+        const target = wordList[Math.floor(Math.random() * wordList.length)];
+        document.getElementById('target-word').innerText = target;
+
+        // Create Grid
+        const gridSize = 6;
+        let gridArray = Array(gridSize).fill().map(() => Array(gridSize).fill(''));
+        
+        // Randomly place word (Horizontal)
+        const row = Math.floor(Math.random() * gridSize);
+        const colStart = Math.floor(Math.random() * (gridSize - target.length));
+        for (let i = 0; i < target.length; i++) {
+            gridArray[row][colStart + i] = target[i];
+        }
+
+        // Fill rest
+        const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        for (let r = 0; r < gridSize; r++) {
+            for (let c = 0; c < gridSize; c++) {
+                const char = gridArray[r][c] || alphabet[Math.floor(Math.random() * 26)];
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                cell.innerText = char;
+                cell.onclick = () => toggleCell(cell, char);
+                document.getElementById('grid').appendChild(cell);
+            }
+        }
+    }
+
+    function toggleCell(cell, char) {
+        cell.classList.toggle('selected');
+        checkWin();
+    }
+
+    function checkWin() {
+        const target = document.getElementById('target-word').innerText;
+        const selectedCells = document.querySelectorAll('.cell.selected');
+        const selectedText = Array.from(selectedCells).map(c => c.innerText).join('');
+        
+        // We check if the target word is formed by the selected letters
+        if (selectedText === target) {
+            setTimeout(() => {
+                document.getElementById('game-view').style.display = 'none';
+                document.getElementById('reward-view').style.display = 'block';
+                document.getElementById('final-msg').innerText = compliments[Math.floor(Math.random() * compliments.length)];
+            }, 400);
+        }
+    }
+
+    function resetGame() {
+        initGame();
+    }
+
+    // Start on load
+    initGame();
+</script>
+
+</body>
+</html>
